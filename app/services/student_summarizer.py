@@ -2,7 +2,13 @@ from together import Together
 import os
 import json
 
-client = Together(api_key=os.getenv("TOGETHER_API_KEY"))
+def get_together_client():
+    """Initialize Together client lazily to avoid startup errors when API key is missing."""
+    api_key = os.getenv("TOGETHER_API_KEY")
+    if not api_key:
+        raise ValueError("TOGETHER_API_KEY environment variable is not set")
+    return Together(api_key=api_key)
+
 model = os.getenv("TOGETHER_MODEL", "meta-llama/Llama-3.3-70B-Instruct-Turbo-Free")
 
 def generate_and_store_student_summary(supabase, student_id: str, user_id: str):
@@ -103,6 +109,7 @@ def generate_and_store_student_summary(supabase, student_id: str, user_id: str):
 
 def call_llm_student_summary(prompt: str) -> str:
     try:
+        client = get_together_client()
         response = client.chat.completions.create(
             model=model,
             messages=[

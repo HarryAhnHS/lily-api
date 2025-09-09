@@ -153,6 +153,9 @@ async def analyze_transcript_for_sessions(
 
         return session_suggestions
 
+    except HTTPException:
+        # Re-raise HTTPExceptions to preserve status codes
+        raise
     except Exception as e:
         raise HTTPException(status_code=400, detail=f"Transcript analysis failed: {str(e)}")
     

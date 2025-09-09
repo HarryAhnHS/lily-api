@@ -1,6 +1,21 @@
 # mirae-api
 
-`uvicorn app.main:app --reload`
+## Setup
+
+### Environment Variables
+Before running the application, make sure to set the following environment variables:
+
+```bash
+export TOGETHER_API_KEY=your_together_api_key_here
+export TOGETHER_MODEL=meta-llama/Llama-3.3-70B-Instruct-Turbo-Free  # Optional, defaults to this model
+```
+
+You can also create a `.env` file in the project root with these variables.
+
+### Running the Application
+```bash
+uvicorn app.main:app --reload
+```
 
 # TODO 04/09/25
 

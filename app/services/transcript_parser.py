@@ -59,7 +59,13 @@ class SuggestedSession(BaseModel):
     matches: List[StudentWithObjectives]
 
 
-client = Together(api_key=os.getenv("TOGETHER_API_KEY")) # auth defaults to env TOGETHER_API_KEY
+def get_together_client():
+    """Initialize Together client lazily to avoid startup errors when API key is missing."""
+    api_key = os.getenv("TOGETHER_API_KEY")
+    if not api_key:
+        raise ValueError("TOGETHER_API_KEY environment variable is not set")
+    return Together(api_key=api_key)
+
 model = os.getenv("TOGETHER_MODEL", "meta-llama/Llama-3.3-70B-Instruct-Turbo-Free")
 
 # ---------- LLM Calls ----------
@@ -98,6 +104,7 @@ def call_llm_extract_sessions(transcript: str, student_names: List[str] = None) 
         """
 
     try:
+        client = get_together_client()
         response = client.chat.completions.create(
             model=model,
             messages=[
@@ -176,6 +183,7 @@ def infer_trials_completed(
             """
 
     try:
+        client = get_together_client()
         response = client.chat.completions.create(
             model=model,
             messages=[
