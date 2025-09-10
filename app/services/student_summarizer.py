@@ -1,15 +1,25 @@
 from together import Together
 import os
 import json
+from groq import Groq
 
-def get_together_client():
-    """Initialize Together client lazily to avoid startup errors when API key is missing."""
-    api_key = os.getenv("TOGETHER_API_KEY")
+# def get_together_client():
+#     """Initialize Together client lazily to avoid startup errors when API key is missing."""
+#     api_key = os.getenv("TOGETHER_API_KEY")
+#     model = os.getenv("TOGETHER_MODEL", "meta-llama/Llama-3.3-70B-Instruct-Turbo-Free")
+
+#     if not api_key:
+#         raise ValueError("TOGETHER_API_KEY environment variable is not set")
+#     return Together(api_key=api_key)
+
+def get_groq_client():
+    api_key = os.getenv("GROQ_API_KEY")
     if not api_key:
-        raise ValueError("TOGETHER_API_KEY environment variable is not set")
-    return Together(api_key=api_key)
+        raise ValueError("GROQ_API_KEY not set")
+    
+    return Groq(api_key=api_key)
 
-model = os.getenv("TOGETHER_MODEL", "meta-llama/Llama-3.3-70B-Instruct-Turbo-Free")
+model = os.getenv("GROQ_MODEL")
 
 def generate_and_store_student_summary(supabase, student_id: str, user_id: str):
     print(f"✅ Generating and storing student summary for student {student_id}")
@@ -109,7 +119,8 @@ def generate_and_store_student_summary(supabase, student_id: str, user_id: str):
 
 def call_llm_student_summary(prompt: str) -> str:
     try:
-        client = get_together_client()
+        client = get_groq_client()
+
         response = client.chat.completions.create(
             model=model,
             messages=[

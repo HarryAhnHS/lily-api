@@ -1,7 +1,7 @@
 from pydantic import BaseModel
 from typing import List
-# from openai import OpenAI
-from together import Together
+from groq import Groq
+# from together import Together
 
 import os
 import json
@@ -59,44 +59,74 @@ class SuggestedSession(BaseModel):
     matches: List[StudentWithObjectives]
 
 
-def get_together_client():
-    """Initialize Together client lazily to avoid startup errors when API key is missing."""
-    api_key = os.getenv("TOGETHER_API_KEY")
-    if not api_key:
-        raise ValueError("TOGETHER_API_KEY environment variable is not set")
-    return Together(api_key=api_key)
+# def get_together_client():
+#     """Initialize Together client lazily to avoid startup errors when API key is missing."""
+#     api_key = os.getenv("TOGETHER_API_KEY")
+#     if not api_key:
+#         raise ValueError("TOGETHER_API_KEY environment variable is not set")
+#     return Together(api_key=api_key)
 
-model = os.getenv("TOGETHER_MODEL", "meta-llama/Llama-3.3-70B-Instruct-Turbo-Free")
+# model = os.getenv("TOGETHER_MODEL", "meta-llama/Llama-3.3-70B-Instruct-Turbo-Free")
+
+def get_groq_client():
+    api_key = os.getenv("GROQ_API_KEY")
+    if not api_key:
+        raise ValueError("GROQ_API_KEY not set")
+    
+    return Groq(api_key=api_key)
+
+model = os.getenv("GROQ_MODEL")
 
 # ---------- LLM Calls ----------
 def call_llm_extract_sessions(transcript: str, student_names: List[str] = None) -> List[dict]:
     student_names_text = ""
     if student_names and len(student_names) > 0:
-        student_names_text = "The following are the actual student names in your system. Please use EXACT matches from this list when possible:\n"
+        student_names_text = "The following are the actual student names in your system. Please use matches from this list when possible:\n"
         student_names_text += ", ".join(student_names)
-        student_names_text += "\n\n"
+        student_names_text += "\nIf no direct match is found from transcript and this list, use the inferred student name as is.\n"
     
     prompt = f"""
-        You are an assistant that extracts structured session logs from a transcript for IEP progress tracking.
-        Your job is to split the transcript into individual *sessions*, not by student but by **distinct activities or observations**. Each session should represent a unique event or evaluation for a single student.
-        Each session may mention the same student or same objective more than once, but you must create a **separate log per activity or observation**, even if it's for the same student.
+        You are an intelligent assistant that extracts structured session logs from raw notes or transcripts written by teachers. These logs are used to track IEP (Individualized Education Program) progress.
 
-        {student_names_text}For each session, extract:
-        - `student_name`: The name of the student the session is about
-        - `objective_description`: Describe what the student was working on, in third person
-        - `memo`: Summarize their performance or outcome for this specific session, in third person
+        Your job is to split the transcript into **individual session logs**, each representing a distinct activity, observation, or evaluation for a student. A single transcript may include multiple sessions, even for the same student or same objective — treat each meaningful unit as its own session.
 
-        🛑 Do **NOT** combine different sessions into one JSON object, even if the same student/objective is involved.
+        ---
 
-        If there is no meaningful session data in the transcript, return an empty list: []
+        🧠 **Student Name Matching**:
+        You may use the following list of known student names to guide your extraction:
+        {", ".join(student_names) if student_names else "None provided"}
 
-        Respond ONLY in valid JSON list format, like this:
+        However, do NOT skip sessions if names are not found in this list. Use your best judgment to extract a likely student name (e.g. "Johnny", "the student", "they") or leave it as `"student_name": null` if unknown.
+
+        ---
+
+        📌 For each session, extract:
+        - `student_name`: Name of the student, or best guess. Use `null` if not clear.
+        - `objective_description`: What the student was doing, phrased as a **third-person skill-based goal** (e.g. "Johnny is working on identifying main ideas in a passage.")
+        - `memo`: What happened during this session, phrased as a **third-person observation or performance summary**.
+
+        ---
+
+        ❗ Guidelines:
+        - Do NOT combine multiple sessions into one. Each line or paragraph that describes a different moment should be its own JSON object.
+        - If sessions repeat the same student or objective, that’s okay — extract them separately.
+        - NEVER return an empty list unless the transcript is truly just filler (e.g. "No sessions today").
+
+        ---
+
+        🎯 Respond ONLY with a **JSON list** like this:
+
         [
         {{
             "student_name": "Johnny",
-            "objective_description": "Johnny is working on solving word problems.",
-            "memo": "Johnny solved 10 out of 15 problems correctly."
+            "objective_description": "Johnny is working on solving word problems with three-digit numbers.",
+            "memo": "He independently solved 10 out of 12 correctly, needing some support with regrouping."
         }},
+        {{
+            "student_name": "Sara",
+            "objective_description": "Sara is practicing using complete sentences in written responses.",
+            "memo": "Sara used capital letters and periods in all 5 sentences today."
+        }}
         ]
 
         Transcript:
@@ -104,20 +134,22 @@ def call_llm_extract_sessions(transcript: str, student_names: List[str] = None) 
         """
 
     try:
-        client = get_together_client()
+        client = get_groq_client()
         response = client.chat.completions.create(
             model=model,
             messages=[
                 {"role": "system", "content": "You extract structured IEP session logs from transcripts."},
                 {"role": "user", "content": prompt}
             ],
-            temperature=0.2,
         )
 
         if not response.choices or not response.choices[0].message.content:
             raise RuntimeError("OpenAI returned an empty response")
 
         raw_output = response.choices[0].message.content.strip()
+
+        print("groq session extraction prompt", prompt)
+        print("raw_output", raw_output)
 
         if not raw_output:
             raise RuntimeError("OpenAI returned an empty string")
@@ -167,8 +199,6 @@ def infer_trials_completed(
 
     user_prompt = f"""
         Student Name: {student_name}
-        Student Grade Level: {student_grade_level}
-        Disability Type: {student_disability_type}
         Student Summary: {student_summary}
 
         Objective Description: {objective_description}
@@ -183,7 +213,7 @@ def infer_trials_completed(
             """
 
     try:
-        client = get_together_client()
+        client = get_groq_client()
         response = client.chat.completions.create(
             model=model,
             messages=[
