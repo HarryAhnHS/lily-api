@@ -7,8 +7,10 @@ attrs==25.3.0
 backoff==2.2.1
 cachetools==5.5.2
 certifi==2025.1.31
+cffi==1.17.1
 charset-normalizer==3.4.1
 click==8.1.8
+cryptography==45.0.7
 deprecation==2.1.0
 distro==1.9.0
 eval_type_backport==0.2.2
@@ -23,6 +25,7 @@ gotrue==2.12.0
 gql==3.5.2
 graphql-core==3.2.4
 greenlet==3.1.1
+groq==0.31.1
 h11==0.14.0
 h2==4.2.0
 hpack==4.1.0
@@ -44,6 +47,7 @@ networkx==3.4.2
 numpy==2.2.4
 openai==1.70.0
 packaging==24.2
+pdfminer.six==20221105
 pdfplumber==0.10.3
 pillow==11.1.0
 playwright==1.51.0
@@ -53,11 +57,13 @@ propcache==0.3.1
 pyarrow==19.0.1
 pyasn1==0.6.1
 pyasn1_modules==0.4.2
+pycparser==2.22
 pydantic==2.11.1
 pydantic_core==2.33.0
 pyee==12.1.1
 Pygments==2.19.1
 PyJWT==2.10.1
+pypdfium2==4.30.0
 pytest==8.3.5
 pytest-mock==3.14.0
 python-dateutil==2.9.0.post0
